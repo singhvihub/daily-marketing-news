@@ -1,0 +1,54 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2821
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 import os\
+import requests\
+from datetime import datetime\
+from openai import OpenAI\
+\
+# Initialize OpenAI client\
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))\
+\
+def fetch_news():\
+    # Example: using NewsAPI for marketing news (replace with any credible source)\
+    url = ("https://newsapi.org/v2/everything?"\
+           "q=digital marketing OR marketing AND language:en&"\
+           "sortBy=publishedAt&"\
+           "apiKey=YOUR_NEWSAPI_KEY")\
+    \
+    response = requests.get(url)\
+    data = response.json()\
+    articles = data.get('articles', [])[:5]  # take top 5 latest articles\
+    news_text = ""\
+    for art in articles:\
+        news_text += f"- \{art['title']\} (\{art['source']['name']\})\\n\{art['url']\}\\n\\n"\
+    return news_text or "No marketing news found today."\
+\
+def summarize_news(text):\
+    prompt = f"Summarize the following digital marketing news in a concise report:\\n\\n\{text\}"\
+    response = client.chat.completions.create(\
+        model="gpt-4o-mini",\
+        messages=[\{"role": "user", "content": prompt\}],\
+        max_tokens=200\
+    )\
+    return response.choices[0].message.content.strip()\
+\
+def send_slack_report(text):\
+    slack_url = os.getenv("SLACK_WEBHOOK")\
+    if slack_url is None:\
+        print("No Slack webhook URL found.")\
+        return\
+    payload = \{"text": f"\uc0\u55357 \u56546  *Daily Digital Marketing Update* (\{datetime.now().strftime('%Y-%m-%d')\}):\\n\\n\{text\}"\}\
+    requests.post(slack_url, json=payload)\
+\
+def main():\
+    news = fetch_news()\
+    summary = summarize_news(news)\
+    send_slack_report(summary)\
+    print("Report sent!")\
+\
+}
